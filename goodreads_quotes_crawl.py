@@ -5,27 +5,22 @@ from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 from cloakbrowser import launch
 
-
 URLS = [
+    "https://www.goodreads.com/quotes/tag/life?page=1",
+    "https://www.goodreads.com/quotes/tag/success?page=1",
+    "https://www.goodreads.com/quotes/tag/love?page=1",
+    "https://www.goodreads.com/quotes/tag/humor?page=1",
+    "https://www.goodreads.com/quotes/tag/relationships?page=1",    
+    "https://www.goodreads.com/quotes/tag/motivational-quotes?page=1",
+    "https://www.goodreads.com/quotes/tag/wisdom?page=1",
     "https://www.goodreads.com/quotes/tag/history?page=1",
+    "https://www.goodreads.com/quotes/tag/science?page=1",
+    "https://www.goodreads.com/quotes/tag/hope?page=1",
+    "https://www.goodreads.com/quotes/tag/philosophy?page=1",
 ]
 
-# URLS = [
-#     "https://www.goodreads.com/quotes/tag/life?page=1",
-#     "https://www.goodreads.com/quotes/tag/success?page=1",
-#     "https://www.goodreads.com/quotes/tag/love?page=1",
-#     "https://www.goodreads.com/quotes/tag/humor?page=1",
-#     "https://www.goodreads.com/quotes/tag/relationships?page=1",    
-#     "https://www.goodreads.com/quotes/tag/motivational-quotes?page=1",
-#     "https://www.goodreads.com/quotes/tag/wisdom?page=1",
-#     "https://www.goodreads.com/quotes/tag/history?page=1",
-#     "https://www.goodreads.com/quotes/tag/science?page=1",
-#     "https://www.goodreads.com/quotes/tag/hope?page=1",
-#     "https://www.goodreads.com/quotes/tag/philosophy?page=1",
-# ]
-
 START_PAGE = 1
-END_PAGE = 1
+END_PAGE = 20
 QUOTE_XPATH = "//*[contains(@class,'mediumText')]//*[contains(@class,'quoteText')]"
 DATA_DIR = Path(__file__).resolve().parent / "data"
 

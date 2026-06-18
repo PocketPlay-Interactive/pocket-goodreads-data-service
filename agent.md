@@ -6,7 +6,7 @@ This project crawls quote data from Goodreads tag pages and exports the results 
 
 ## Important Files
 
-- `goodreads_quotes_crawl.py`: Main crawler logic. It opens Goodreads pages, extracts quote and author data, removes duplicates per tag, and writes CSV files.
+- `goodreads_quotes_crawl.py`: Main crawler logic. It opens Goodreads pages, extracts text from `QUOTE_XPATH`, parses quote/author/book fields, removes duplicates per tag, and writes CSV files.
 - `run_goodreads_crawl.bat`: Windows runner. It creates/uses the project `.venv`, installs dependencies, and runs the crawler.
 - `run_goodreads_crawl.sh`: macOS/Linux runner. It creates/uses the project `.venv`, installs dependencies, and runs the crawler.
 - `requirements.txt`: Python dependencies installed into `.venv`.
@@ -19,7 +19,7 @@ This project crawls quote data from Goodreads tag pages and exports the results 
 - Runner scripts should use the project-local `.venv` and install dependencies from `requirements.txt`.
 - All generated CSV files must be saved inside the project-local `data` directory.
 - Do not commit generated CSV output. `.gitignore` should continue to ignore CSV files.
-- If Goodreads markup changes, check `QUOTE_XPATH` and `AUTHOR_RELATIVE_XPATH`.
+- If Goodreads markup changes, check `QUOTE_XPATH`.
 
 ## Quick Run
 
@@ -42,9 +42,10 @@ After a successful run:
 
 - The `data` directory exists.
 - Each Goodreads tag has its own CSV file, for example `data/life.csv`.
-- Each CSV contains the header `id,quote,author`.
+- Each CSV contains the header `id,quote,author,book`.
 
 ## Notes
 
 - CSV files are written with `utf-8-sig` encoding for better Excel compatibility.
 - If one page fails, the crawler logs the error and continues with the next page or tag.
+- Parsed text is trimmed. Quote marks are removed, quote/author are split on the dash separator, and author/book are split on the first comma.

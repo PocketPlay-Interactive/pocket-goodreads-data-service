@@ -6,7 +6,7 @@ Cong cu crawl quotes tu Goodreads theo danh sach tag cau hinh san va luu ket qua
 
 - Crawl quotes theo cac tag Goodreads trong `URLS`.
 - Ho tro crawl nhieu page qua `START_PAGE` va `END_PAGE`.
-- Tach noi dung quote va author.
+- Tach text lay duoc tu `QUOTE_XPATH` thanh quote, author, va book.
 - Bo qua quote trung lap trong tung tag.
 - Luu CSV vao thu muc `data` nam cung thu muc voi source code.
 
@@ -78,8 +78,10 @@ Moi file CSV co cac cot:
 - `id`
 - `quote`
 - `author`
+- `book`
 
 ## Ghi chu
 
 - File CSV duoc ghi voi encoding `utf-8-sig` de mo tot tren Excel.
 - Neu mot page loi, script se in log loi va tiep tuc voi page/tag tiep theo.
+- Text crawl duoc trim whitespace, xoa quote marks, tach quote/author bang dash, va tach author/book bang dau phay dau tien.

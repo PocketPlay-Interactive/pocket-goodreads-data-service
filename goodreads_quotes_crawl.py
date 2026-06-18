@@ -7,23 +7,26 @@ from cloakbrowser import launch
 
 
 URLS = [
-    "https://www.goodreads.com/quotes/tag/life?page=1",
-    "https://www.goodreads.com/quotes/tag/success?page=1",
-    "https://www.goodreads.com/quotes/tag/love?page=1",
-    "https://www.goodreads.com/quotes/tag/humor?page=1",
-    "https://www.goodreads.com/quotes/tag/relationships?page=1",    
-    "https://www.goodreads.com/quotes/tag/motivational-quotes?page=1",
-    "https://www.goodreads.com/quotes/tag/wisdom?page=1",
     "https://www.goodreads.com/quotes/tag/history?page=1",
-    "https://www.goodreads.com/quotes/tag/science?page=1",
-    "https://www.goodreads.com/quotes/tag/hope?page=1",
-    "https://www.goodreads.com/quotes/tag/philosophy?page=1",
 ]
+
+# URLS = [
+#     "https://www.goodreads.com/quotes/tag/life?page=1",
+#     "https://www.goodreads.com/quotes/tag/success?page=1",
+#     "https://www.goodreads.com/quotes/tag/love?page=1",
+#     "https://www.goodreads.com/quotes/tag/humor?page=1",
+#     "https://www.goodreads.com/quotes/tag/relationships?page=1",    
+#     "https://www.goodreads.com/quotes/tag/motivational-quotes?page=1",
+#     "https://www.goodreads.com/quotes/tag/wisdom?page=1",
+#     "https://www.goodreads.com/quotes/tag/history?page=1",
+#     "https://www.goodreads.com/quotes/tag/science?page=1",
+#     "https://www.goodreads.com/quotes/tag/hope?page=1",
+#     "https://www.goodreads.com/quotes/tag/philosophy?page=1",
+# ]
 
 START_PAGE = 1
 END_PAGE = 1
 QUOTE_XPATH = "//*[contains(@class,'mediumText')]//*[contains(@class,'quoteText')]"
-AUTHOR_RELATIVE_XPATH = ".//span[contains(@class,'authorOrTitle')]"
 DATA_DIR = Path(__file__).resolve().parent / "data"
 
 
@@ -70,6 +73,39 @@ def normalize_text(text):
     if not text:
         return ""
     return re.sub(r"\s+", " ", text).strip()
+
+
+def remove_quote_marks(text):
+    """Remove quote mark characters from extracted text."""
+    return text.replace('"', "").replace("“", "").replace("”", "")
+
+
+def parse_quote_text(raw_text):
+    """Parse raw Goodreads quote text into quote, author, and book fields."""
+    cleaned_text = remove_quote_marks(normalize_text(raw_text))
+    quote = cleaned_text
+    author_and_book = ""
+
+    separator_match = re.search(r"\s+[―-]\s+", cleaned_text)
+    if separator_match:
+        quote = cleaned_text[: separator_match.start()]
+        author_and_book = cleaned_text[separator_match.end() :]
+    elif "-" in cleaned_text:
+        quote, author_and_book = cleaned_text.split("-", 1)
+
+    quote = quote.strip()
+    author_and_book = author_and_book.strip()
+
+    author = author_and_book
+    book = ""
+    if "," in author_and_book:
+        author, book = author_and_book.split(",", 1)
+
+    return {
+        "quote": quote.strip(),
+        "author": author.strip(),
+        "book": book.strip(),
+    }
 
 
 def get_text(element):
@@ -127,41 +163,26 @@ def wait_for_page_load(page):
 
 
 def extract_quotes(page):
-    """Extract quote and author data directly from DOM elements."""
+    """Extract and parse quote text directly from the Goodreads quote elements."""
     quote_elements = find_all_by_xpath(page, QUOTE_XPATH)
     quotes = []
 
     for quote_element in quote_elements:
-        raw_quote = get_text(quote_element)
-        author = ""
+        parsed_quote = parse_quote_text(get_text(quote_element))
 
-        try:
-            author_elements = find_all_by_xpath(quote_element, AUTHOR_RELATIVE_XPATH)
-            if author_elements:
-                author = normalize_text(get_text(author_elements[0])).rstrip(",")
-        except Exception:
-            author = ""
-
-        quote = normalize_text(raw_quote)
-
-        # Goodreads places author text inside quoteText, so remove it before saving.
-        if author:
-            quote = quote.replace(author, "")
-            quote = quote.replace(author.rstrip(","), "")
-            quote = normalize_text(quote)
-
-        quotes.append({"quote": quote, "author": author})
+        if parsed_quote["quote"]:
+            quotes.append(parsed_quote)
 
     return quotes
 
 
 def save_csv(rows, filename):
-    """Save quote rows to CSV with id, quote, author columns."""
+    """Save quote rows to CSV with id, quote, author, and book columns."""
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     output_path = DATA_DIR / filename
 
     with open(output_path, "w", newline="", encoding="utf-8-sig") as csv_file:
-        writer = csv.DictWriter(csv_file, fieldnames=["id", "quote", "author"])
+        writer = csv.DictWriter(csv_file, fieldnames=["id", "quote", "author", "book"])
         writer.writeheader()
         writer.writerows(rows)
 
@@ -198,6 +219,7 @@ def main():
                         for item in extracted_quotes:
                             quote = item["quote"]
                             author = item["author"]
+                            book = item["book"]
 
                             if not quote or quote in seen_quotes:
                                 continue
@@ -208,6 +230,7 @@ def main():
                                     "id": next_id,
                                     "quote": quote,
                                     "author": author,
+                                    "book": book,
                                 }
                             )
                             next_id += 1

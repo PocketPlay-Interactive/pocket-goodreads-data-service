@@ -24,6 +24,7 @@ START_PAGE = 1
 END_PAGE = 1
 QUOTE_XPATH = "//*[contains(@class,'mediumText')]//*[contains(@class,'quoteText')]"
 AUTHOR_RELATIVE_XPATH = ".//span[contains(@class,'authorOrTitle')]"
+DATA_DIR = Path(__file__).resolve().parent / "data"
 
 
 def build_url(url, page_number):
@@ -156,10 +157,15 @@ def extract_quotes(page):
 
 def save_csv(rows, filename):
     """Save quote rows to CSV with id, quote, author columns."""
-    with open(filename, "w", newline="", encoding="utf-8-sig") as csv_file:
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    output_path = DATA_DIR / filename
+
+    with open(output_path, "w", newline="", encoding="utf-8-sig") as csv_file:
         writer = csv.DictWriter(csv_file, fieldnames=["id", "quote", "author"])
         writer.writeheader()
         writer.writerows(rows)
+
+    return output_path
 
 
 def main():
@@ -214,8 +220,8 @@ def main():
                 print(f"[ERROR] URL failed: {base_url} | {url_error}")
                 continue
 
-            save_csv(rows, output_file)
-            print(f"[INFO] Saved: {output_file}")
+            saved_path = save_csv(rows, output_file)
+            print(f"[INFO] Saved: {saved_path}")
     finally:
         if browser is not None:
             browser.close()

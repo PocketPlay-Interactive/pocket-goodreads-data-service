@@ -1,5 +1,7 @@
 import csv
 import re
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
@@ -21,8 +23,16 @@ URLS = [
 
 START_PAGE = 1
 END_PAGE = 20
+MAX_WORKERS = 3
 QUOTE_XPATH = "//*[contains(@class,'mediumText')]//*[contains(@class,'quoteText')]"
 DATA_DIR = Path(__file__).resolve().parent / "data"
+PRINT_LOCK = threading.Lock()
+
+
+def log(message):
+    """Print log lines safely when multiple threads are running."""
+    with PRINT_LOCK:
+        print(message, flush=True)
 
 
 def build_url(url, page_number):
@@ -184,65 +194,78 @@ def save_csv(rows, filename):
     return output_path
 
 
-def main():
+def crawl_url_job(base_url):
+    """Crawl all pages for one URL and save that URL's data to one CSV file."""
+    rows = []
+    seen_quotes = set()
+    next_id = 1
+    output_file = build_output_filename(base_url)
     browser = None
 
     try:
         browser = launch()
         page = browser.new_page()
 
-        for base_url in URLS:
-            rows = []
-            seen_quotes = set()
-            next_id = 1
-            output_file = build_output_filename(base_url)
+        log(f"[INFO] Crawling: {base_url}")
 
-            print(f"[INFO] Crawling: {base_url}")
+        for page_number in range(START_PAGE, END_PAGE + 1):
+            crawl_url = build_url(base_url, page_number)
+            log(f"[INFO] Page: {page_number} | {output_file}")
 
             try:
-                for page_number in range(START_PAGE, END_PAGE + 1):
-                    crawl_url = build_url(base_url, page_number)
-                    print(f"[INFO] Page: {page_number}")
+                page.goto(crawl_url)
+                wait_for_page_load(page)
 
-                    try:
-                        page.goto(crawl_url)
-                        wait_for_page_load(page)
+                extracted_quotes = extract_quotes(page)
+                log(f"[INFO] Found: {len(extracted_quotes)} quotes | {output_file}")
 
-                        extracted_quotes = extract_quotes(page)
-                        print(f"[INFO] Found: {len(extracted_quotes)} quotes")
+                for item in extracted_quotes:
+                    quote = item["quote"]
+                    author = item["author"]
+                    book = item["book"]
 
-                        for item in extracted_quotes:
-                            quote = item["quote"]
-                            author = item["author"]
-                            book = item["book"]
-
-                            if not quote or quote in seen_quotes:
-                                continue
-
-                            seen_quotes.add(quote)
-                            rows.append(
-                                {
-                                    "id": next_id,
-                                    "quote": quote,
-                                    "author": author,
-                                    "book": book,
-                                }
-                            )
-                            next_id += 1
-
-                        print(f"[INFO] Total: {len(rows)} quotes")
-                    except Exception as page_error:
-                        print(f"[ERROR] Page failed: {crawl_url} | {page_error}")
+                    if not quote or quote in seen_quotes:
                         continue
-            except Exception as url_error:
-                print(f"[ERROR] URL failed: {base_url} | {url_error}")
+
+                    seen_quotes.add(quote)
+                    rows.append(
+                        {
+                            "id": next_id,
+                            "quote": quote,
+                            "author": author,
+                            "book": book,
+                        }
+                    )
+                    next_id += 1
+
+                log(f"[INFO] Total: {len(rows)} quotes | {output_file}")
+            except Exception as page_error:
+                log(f"[ERROR] Page failed: {crawl_url} | {page_error}")
                 continue
 
-            saved_path = save_csv(rows, output_file)
-            print(f"[INFO] Saved: {saved_path}")
+        saved_path = save_csv(rows, output_file)
+        log(f"[INFO] Saved: {saved_path}")
+        return saved_path
+    except Exception as url_error:
+        log(f"[ERROR] URL failed: {base_url} | {url_error}")
+        return None
     finally:
         if browser is not None:
             browser.close()
+
+
+def main():
+    worker_count = min(MAX_WORKERS, len(URLS))
+    log(f"[INFO] Starting {len(URLS)} jobs with {worker_count} worker(s)")
+
+    with ThreadPoolExecutor(max_workers=worker_count) as executor:
+        futures = [executor.submit(crawl_url_job, url) for url in URLS]
+
+        for future in as_completed(futures):
+            try:
+                future.result()
+            except Exception as error:
+                log(f"[ERROR] Worker failed: {error}")
 
 
 if __name__ == "__main__":
